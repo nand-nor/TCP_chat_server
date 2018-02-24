@@ -1,0 +1,103 @@
+Allie Clifford
+Assignment 2: Chat Application
+Due: 11:59pm, February 21st
+
+In this assignment, I built a chat application based on the client-server 
+model. The server uses TCP-managed sockets, persistent connections, and 
+is able to handle multiple clients at the same time. This is achieved 
+using the select() system call rather than threads, per the assignment 
+specification. Also per the assignment specification, all code was to
+be submitted as a single file, rather than as modules. The full 
+assignment specifications are viewable in COMP112_A2_Spring2018.pdf.  
+
+This application is able to handle the arrival and departure of clients 
+(both graceful exit as well as uninformed). One edit was made to the 
+assignment not included in the pdf: clients who ungracefully exit are
+not required to be maintained in the client records (no longer 
+treating ungraceful exit as if client temporarily disconnected). A max
+of 20 connections at one time is set.  
+
+Clients connect to the server via a TCP connection, and can make the
+following requests to the server:
+1. A HELLO message (clients tell the server that they are here).
+a. This is used by new clients as well as those that were temporarily 
+disconnected.
+b. When the server receives a HELLO message, it will register the 
+client by keeping track of its ClientID and send back a HELLO_ACK 
+message. Additionally it will also send a CLIENT_LIST message 
+which contains the information about existing clients.
+c. If a ClientID already exists, the server responds with an
+ERROR(CLIENT_ALREADY_PRESENT) message and closes the TCP connection.
+2. LIST_REQUEST message
+a. A client can also explicitly request the list of connected clients 
+by sending a LIST_REQUEST message. The server will respond through 
+the CLIENT_LIST message.
+3. A CHAT message (from one client to the other).
+a. Clients can send messages to other clients by sending a CHAT 
+message to the server.
+b. The server will forward this message to the intended recipient 
+client in another CHAT message.
+c. If the recipient client doesn’t exist, the server discards the 
+message and sends an ERROR(CANNOT_DELIVER) message, which has the 
+Message-ID appropriately set, back to the sender.
+4. An EXIT message:
+a. Signals that the client is leaving. In this case the server 
+removes the client from its record.
+
+Requests are made to the server using a header message to indicate
+message type, message source, message destination, length, message
+ID, and, in a separate message if appropriate, data. If there is no
+data following the header message, then length is 0. In total, there are
+8 message types to support this functionality:
+1 - HELLO
+2 - HELLO_ACK
+3 - LIST_REQUEST
+4 - CLIENT_LIST
+5 - CHAT
+6 - EXIT
+7 - ERROR(CLIENT_ALREADY_PRESENT)
+8 - ERROR(CANNOT_DELIVER) 
+Header messages are serialized/deserialized in the following manner:
+They are stored as packed header structs, and when transmitted are cast 
+to and from (char *) in calls to read() and write(). 
+
+Client records are stored in two data structures: a hashtable and an array
+of socket file descriptors and client ID pairs. The array uses 
+socket file descriptors as the index key, and holds pointers to 
+client_node structs. The hashtable holds the same records, however
+in this structire the client ID is the key, and the value is a pointer to 
+a client_node struct. These two structures are used to resolve internal
+routing: other clients are not aware of socket file descriptor values,
+and select() is not aware of client IDs. When a client makes a chat
+request to the server, it provides a client ID as the message recipient.
+Therefore fast lookup of clients using both their socket file 
+descriptor, and their client ID, requires these two redundant structures. 
+
+Each client record has the following: 
+1. a client ID, i.e. the name a user specifies when connecting to 
+the server.
+2. a socketfd, assigned by select()
+3. a number to indicate the length of their message queue
+3. a pointer to a header struct, used if client indicated they will
+send a chat message following a header message
+4. a pointer to a message struct, where each client's message queue is
+stored within their individual client record
+
+Each message struct has the following:
+1. a pointer to a header struct, which stores all of the info necessary
+for appropriate routing (and return, if necessary).
+2. an array of 400 bytes to hold the message data
+3. a flag to indicate if data should not be sent, in the case of when
+a message must be returned to sender
+4. a pointer to a message struct, i.e. next, to hold links within the
+message queue.    
+
+Because the connection state of each client must be monitored for 
+voluntary and involuntary closing of the socket, a state variable is
+passed through all functions that are called when processing a client
+connection, either for new activity or for sending messages from other
+clients. Error handling throughout is included to handle undefined 
+behavior from clients, which, in most cases unless otherwise specified,
+results in the closing of the connection. Because the server is not meant
+to be closed (per instructor) there is no memory management included. 
+This functionality will be added at a later time.
