@@ -24,10 +24,10 @@
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <errno.h> //for debug
-#include <poll.h>
 
-
-typedef enum message_type {HELLO = 1, HELLO_ACK, LIST_REQUEST, CLIENT_LIST, CHAT, EXIT, ERROR_CAP, ERROR_CD} Type_M;
+typedef enum message_type {HELLO = 1, HELLO_ACK, LIST_REQUEST, 
+                                CLIENT_LIST, CHAT, EXIT, ERROR_CAP, 
+                                ERROR_CD} Type_M;
 
 /*
  * packed struct for holding header data sent to the server
@@ -38,7 +38,6 @@ struct __attribute__((__packed__)) header_C {
         char dest[20];
         unsigned int len;
         unsigned int ID;
-      
 };
 
 /*

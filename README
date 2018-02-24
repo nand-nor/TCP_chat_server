@@ -101,3 +101,6 @@ behavior from clients, which, in most cases unless otherwise specified,
 results in the closing of the connection. Because the server is not meant
 to be closed (per instructor) there is no memory management included. 
 This functionality will be added at a later time.
+
+To compile this server, we were instructed to link against the -lnsl 
+library.
